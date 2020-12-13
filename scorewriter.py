@@ -98,9 +98,13 @@ def update_tab_state(tokens, state):
             except KeyError:
                 state["tab"][state["octave"]] = [token]
 
-def save_score(score):
-    # Serialize data into file:
-    json.dump( score, open( "/tmp/score.json", 'w' ) )
+
+def save_score(score, fname):
+    # Serial:ze data into file with INDENTATION:
+    j = json.dumps( score, indent=4 )
+    f = open( fname, 'w' )
+    print(j, file=f)
+    f.close()
 
 def load_score(state, f):
     # Read data from file:
@@ -139,7 +143,7 @@ while (1):
         try:
             f = string.split()[1]
             if 'save' == string.split()[0]:
-                save_score(state["score"])
+                save_score(state["score"], f)
                 print("saved to " + f)
             if 'load' == string.split()[0]:
                 load_score(state, f)
