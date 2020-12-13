@@ -9,7 +9,6 @@
 #   - output takes up loads of width. `setterm -linewrap off` helps..
 # * method to delete previous tab/line
 # * export formatted score to txt file
-# * save and load. csv where value is a "tab"?
 
 # input rules
 # ===========
@@ -45,7 +44,6 @@ def tab_oct2str(tab):
     notenums = []
     for note in tab:
         notenums.append(note2num(note))
-
     for i in range(0, 12):
         if i in notenums:
             s += ' ' + num2note(i).ljust(2) + ' |'
@@ -59,10 +57,10 @@ def tab2str(tab):
     s = "|"
     for i in range(lo_oct, hi_oct+1):
         try:
-            oct_tab = tab[i]
+            oct_tab = tab[str(i)]
         except KeyError:
-            tab[i] = []
-            oct_tab = tab[i]
+            tab[str(i)] = []
+            oct_tab = tab[str(i)]
         s += tab_oct2str(oct_tab)
     return s
 
@@ -82,26 +80,70 @@ def update_tab_state(tokens, state):
     state["tab"] = {}
     for token in tokens:
         if re.search(octave, token) != None:
-            state["octave"] = int(token)
+            state["octave"] = token
         elif re.search(note, token) != None:
             try:
                 state["tab"][state["octave"]] += [token]
             except KeyError:
                 state["tab"][state["octave"]] = [token]
 
-# main
-state = {}
-state["octave"] = 3
-state["tab"] = {}
-mytabs = []
-while (1):
-    string = input("tab: ")
-    tokens = tokenise(string)
-    update_tab_state(tokens, state)
-    mytabs.append(state["tab"])
-    # print the whole score
-    for tab in mytabs:
+import json
+def save_score(score):
+    # Serialize data into file:
+    json.dump( score, open( "/tmp/score.json", 'w' ) )
+
+def load_score(state, f):
+    # Read data from file:
+    state["score"] = json.load( open( f ) )
+    print(state["score"])
+
+def print_score(score):
+    for tab in score:
         tabstr = tab2str(tab)
         print(tabstr)
+
+# main
+state = {}
+state["octave"] = '3'
+state["tab"] = {}
+state["score"] = []
+usage = '''usage:
+======
+default entry (tabs): (''' + octave + note + ''')+
+control options:
+\tsave            - saves score
+\ttsave            - saves score
+\tload <filename> - loads score
+\tclear           - clear score
+\tquit            - quit"'''
+print(usage)
+while (1):
+    string = input(": ")
+    if string.startswith('save') or string.startswith('load'):
+        try:
+            f = string.split()[1]
+            if 'save' == string.split()[0]:
+                save_score(state["score"])
+                print("saved to " + f)
+            elif 'load' == string.split()[0]:
+                load_score(state, f)
+                print_score(state["score"])
+                print(f + " loaded.")
+        except:
+            print("ERR: can't access file or no file given")
+    elif string == 'quit':
+        exit()
+    elif string == 'clear':
+        state.clear()
+        state["octave"] = '3'
+        state["score"] = []
+    else:
+        # assume a new tab was entered
+        tokens = tokenise(string)
+        update_tab_state(tokens, state)
+        state["score"].append(state["tab"])
+        # print the whole score
+        print_score(state["score"])
+
 
 exit()
