@@ -5,7 +5,6 @@
 # ====
 # * make output less confusing (flats/sharps...)
 # * make the range programmable and more flexible. issues:
-#   - octaves are hardcoded
 #   - output takes up loads of width. `setterm -linewrap off` helps..
 
 # input rules
@@ -28,6 +27,14 @@
 import re
 import json
 import sys
+
+# defaults
+fmt = {
+    "oct_lo": '3',
+    "oct_hi": '4',
+    "note_lo": 'c',
+    "note_hi": 'b',
+}
 
 def note2num(note):
     l = [ 'c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b' ]
@@ -52,17 +59,21 @@ def tab_oct2str(tab):
     return s
 
 def tab2str(tab):
-    lo_oct = 3
-    hi_oct = 5
     s = "|"
-    for i in range(lo_oct, hi_oct+1):
+    for i in range(int(fmt["oct_lo"]), int(fmt["oct_hi"])+1):
         try:
             oct_tab = tab[str(i)]
         except KeyError:
             tab[str(i)] = []
             oct_tab = tab[str(i)]
         s += tab_oct2str(oct_tab)
-    return s
+
+    lo = note2num(fmt["note_lo"])
+    hi = note2num(fmt["note_hi"])
+    if hi == 11:
+        return s[lo*5:]
+    else:
+        return s[lo*5:(-11+hi)*5]
 
 # define lexer
 octave = "[0-9]"
@@ -116,6 +127,10 @@ control options:
 \texport <filename> - exports score as | formatted | text | file |
 \tdel               - delete most recent tab
 \tclear             - clear entire score
+\tset <op> <val>    - sets formatting options for score [EXPERIMENTAL]
+\tprint             - print score
+\t\tops : oct_lo, oct_hi, note_lo, note_hi
+\thelp              - print this
 \tquit              - quit"'''
 print(usage)
 while (1):
@@ -144,10 +159,20 @@ while (1):
             print(score2string(state["score"]))
         else:
             print("ERR: score empty")
+    elif string == '?' or string == 'help':
+        print(usage)
+    elif string == 'print':
+        print(score2string(state["score"]))
     elif string == 'clear':
         state.clear()
         state["octave"] = '3'
         state["score"] = []
+    elif string.startswith('set'):
+        try:
+            fmt[string.split()[1]] = string.split()[2]
+            print("set fmt[" + string.split()[1] + "] = " + string.split()[2])
+        except:
+            print("ERR: set args are wrong. doing nothing")
     else:
         # assume a new tab was entered
         tokens = tokenise(string)
