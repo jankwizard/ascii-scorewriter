@@ -7,8 +7,6 @@
 # * make the range programmable and more flexible. issues:
 #   - octaves are hardcoded
 #   - output takes up loads of width. `setterm -linewrap off` helps..
-# * method to delete previous tab/line
-# * export formatted score to txt file
 
 # input rules
 # ===========
@@ -28,6 +26,8 @@
 # 2: [4:c,g]
 
 import re
+import json
+import sys
 
 def note2num(note):
     l = [ 'c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b' ]
@@ -87,7 +87,6 @@ def update_tab_state(tokens, state):
             except KeyError:
                 state["tab"][state["octave"]] = [token]
 
-import json
 def save_score(score):
     # Serialize data into file:
     json.dump( score, open( "/tmp/score.json", 'w' ) )
@@ -97,10 +96,11 @@ def load_score(state, f):
     state["score"] = json.load( open( f ) )
     print(state["score"])
 
-def print_score(score):
+def score2string(score):
+    tabstr = ""
     for tab in score:
-        tabstr = tab2str(tab)
-        print(tabstr)
+        tabstr += tab2str(tab) + '\n'
+    return tabstr
 
 # main
 state = {}
@@ -111,28 +111,39 @@ usage = '''usage:
 ======
 default entry (tabs): (''' + octave + note + ''')+
 control options:
-\tsave            - saves score
-\ttsave            - saves score
-\tload <filename> - loads score
-\tclear           - clear score
-\tquit            - quit"'''
+\tsave              - saves score
+\tload <filename>   - loads score
+\texport <filename> - exports score as | formatted | text | file |
+\tdel               - delete most recent tab
+\tclear             - clear entire score
+\tquit              - quit"'''
 print(usage)
 while (1):
     string = input(": ")
-    if string.startswith('save') or string.startswith('load'):
+    if string.startswith('save') or string.startswith('load') or string.startswith('export'):
         try:
             f = string.split()[1]
             if 'save' == string.split()[0]:
                 save_score(state["score"])
                 print("saved to " + f)
-            elif 'load' == string.split()[0]:
+            if 'load' == string.split()[0]:
                 load_score(state, f)
-                print_score(state["score"])
+                print(score2string(state["score"]))
                 print(f + " loaded.")
+            elif 'export' == string.split()[0]:
+                with open(f, 'w') as fh:
+                    fh.write(score2string(state["score"]))
+                print("exported to " + f)
         except:
             print("ERR: can't access file or no file given")
     elif string == 'quit':
         exit()
+    elif string == 'del':
+        if len(state["score"]):
+            state["score"].pop()
+            print(score2string(state["score"]))
+        else:
+            print("ERR: score empty")
     elif string == 'clear':
         state.clear()
         state["octave"] = '3'
@@ -143,7 +154,7 @@ while (1):
         update_tab_state(tokens, state)
         state["score"].append(state["tab"])
         # print the whole score
-        print_score(state["score"])
+        print(score2string(state["score"]))
 
 
 exit()
